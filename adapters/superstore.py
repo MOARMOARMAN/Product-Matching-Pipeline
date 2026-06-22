@@ -8,8 +8,11 @@ def load_superstore(file_name: str):
             products.append(Product(
                 product_id=getattr(row, "productId", ""),
                 name=getattr(row, "title", ""),
-                brand=getattr(row, "brand", ""),
                 description=getattr(row, "description", ""),
+                brand=getattr(row, "brand", ""),
+                categories=getattr(row, "Sub Category", ""),
+                size=getattr(row, "packageSizing", ""),
+                price=getattr(row, "Price", "")
             ))  
     
     return products

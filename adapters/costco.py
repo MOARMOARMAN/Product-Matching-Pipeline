@@ -9,7 +9,9 @@ def load_costco(file_name: str):
                 product_id=getattr(row, "Id", ""),
                 name=getattr(row, "Title", ""),
                 description=getattr(row, "Product Description", ""),
+                brand=getattr(row, "brand", ""),
                 categories=getattr(row, "Sub Category", ""),
+                size=getattr(row, "Feature", ""),
                 price=getattr(row, "Price", "")
             ))  
     
