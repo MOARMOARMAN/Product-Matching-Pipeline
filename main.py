@@ -1,6 +1,7 @@
 from rapidfuzz.distance import Levenshtein
 from product import Product
 from adapters import load_costco, load_superstore
+from llm_processing import gemini_processing, openai_processing
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -8,6 +9,7 @@ import numpy
 
 FILE_A = "sample_data\GroceryDataset.csv"
 FILE_B = "sample_data\grocery_data_apr_2025-selected-columns.csv"
+llm_provider = "gemini"
 products_a = load_costco(FILE_A)
 products_b = load_superstore(FILE_B)
 products_dict_a = {}
@@ -18,6 +20,9 @@ names_a = []
 names_b = []
 ids_a = []
 ids_b = []
+
+confirmed_pairs = []
+questionable_pairs = []
 
 def get_brands_regex_compiled(products: list[Product]):
     brands_raw = set()
@@ -40,7 +45,7 @@ def score_calculator(tfidf_score: float, a_txt: str, b_txt: str):
     final_score = tfidf_score * tfidf_multi + leven_score * leven_multi
     return final_score
     
-def print_match(a_inds: list, a_id: list, b_id: list, b_ind: int, tfidf_scores: list):
+def add_match(a_inds: list, a_id: list, b_id: list, b_ind: int, tfidf_scores: list):
     max_id = 0
     max_similarity = -1
     b_cur_id = b_id[b_ind]
@@ -56,15 +61,39 @@ def print_match(a_inds: list, a_id: list, b_id: list, b_ind: int, tfidf_scores: 
             max_id = a_cur_id
     a_full_name = unmodified_names_a[max_id]
     if (len(products_dict_a[max_id].name.split()) < 2 or len(b_clean_name.split()) < 2) and max_similarity > 0.8:
-        print(f"{b_full_name} matched with {a_full_name} at a similarity score of {max_similarity}")
-    elif max_similarity > 0.8:
-        print(f"{b_full_name} matched with {a_full_name} at a similarity score of {max_similarity}")
-    elif max_similarity > 0.75:
+        confirmed_pairs.append((max_id, b_cur_id))
+    elif max_similarity > 0.7:
         if not (len(products_dict_a[max_id].name.split()) < 2 or len(b_clean_name.split()) < 2):
-            print(f"{b_full_name} matched with {a_full_name} at a similarity score of {max_similarity}")
+            questionable_pairs.append((max_id, b_cur_id))
         else:
-            print(f"{b_full_name} matched with {a_full_name} at a similarity score of {max_similarity}")
-    
+            questionable_pairs.append((max_id, b_cur_id))
+
+def process_ambiguous_cases(cases: list, products_dict_a: dict, products_dict_b: dict, confirmed_pairs: list, unmodified_names_a: dict, unmodified_names_b: dict):
+    prompt = f"Analyze the following {len(cases)} pairs of products, determine if they are a match based on your system instructions.\n"
+    for index, case in enumerate(cases):
+        prompt += f"Pair {index}:\n"
+        a_id, b_id = case
+        product_a = products_dict_a[a_id]
+        product_b = products_dict_b[b_id]
+        a_name = unmodified_names_a[a_id]
+        b_name = unmodified_names_b[b_id]
+        a_description = product_a.description
+        b_description = product_b.description
+
+        prompt += f"Product A Name: {a_name}\n"
+        prompt += f"Product B Name: {b_name}\n"
+        prompt += f"Product A Description: {a_description}\n"
+        prompt += f"Product B Description: {b_description}\n"
+    if llm_provider == "gemini":
+        boolean_list = gemini_processing(prompt)
+    elif llm_provider == "openai":
+        boolean_list = openai_processing(prompt)
+    else:
+        print("no LLM supplied")
+        return
+    for result in boolean_list.results:
+        if result.is_match and (result.index < len(cases) and 0 <= result.index):
+            confirmed_pairs.append(cases[result.index])
 
 fluff_word_list = ["original", "classic", "premium", "select", "choice", "prime",
                     "natural", "real", "pure", "new", "improved", "best", "great",
@@ -116,4 +145,12 @@ for i in range(0, vectorized_b.shape[0], 500):
         score_2 = sim_matrix[j, a_ind_2]
         score_3 = sim_matrix[j, a_ind_3]
         tfidf_scores = [score_1, score_2, score_3]
-        print_match(top3_matches[j], ids_a, ids_b, index, tfidf_scores)
+        add_match(top3_matches[j], ids_a, ids_b, index, tfidf_scores)
+
+for i in range(0, len(questionable_pairs), 10):
+    print(f"Processing LLM batch {i} to {i + 10}")
+    process_ambiguous_cases(questionable_pairs[i:i+10], products_dict_a, products_dict_b, confirmed_pairs, unmodified_names_a, unmodified_names_b)
+
+for index, case in enumerate(confirmed_pairs):
+    a, b = case
+    print(f"{index}. {unmodified_names_a[a]} matched with {unmodified_names_b[b]}")
