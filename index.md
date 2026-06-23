@@ -17,7 +17,7 @@ to resolve noisy, inconsistent product naming across datasets.
 <div style="display:flex; justify-content:center; width:100%; overflow:hidden;">
   <img src="https://raw.githubusercontent.com/MOARMOARMAN/Product-Matching-Pipeline/refs/heads/main/images/pipeline.svg" 
     alt="Product Matching Pipeline Diagram" 
-    style="width: 1100px; max-width: 95vw; height: auto;">
+    style="width: 100%; height: auto; display: block;">
 </div>
 
 ---
