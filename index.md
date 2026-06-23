@@ -3,6 +3,7 @@
 A production-style **entity resolution system** that matches equivalent grocery products across heterogeneous retailer catalogs (Costco vs Superstore-style datasets).
 
 The system combines:
+- fuzzy filtering (regex)
 - NLP-based vector retrieval (TF-IDF)
 - fuzzy string matching (Levenshtein)
 - heuristic scoring
