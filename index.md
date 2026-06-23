@@ -15,7 +15,7 @@ to resolve noisy, inconsistent product naming across datasets.
 
 # ⚙️ System Architecture
 
-```mermaid
+<div class="mermaid">
 flowchart TD
 
 A[Raw Retailer Dataset A] --> C[Product Adapter Layer]
@@ -38,8 +38,7 @@ K --> L[Gemini / OpenAI Structured Output]
 L --> J
 
 J --> M[Final Matched Product Pairs]
-
-```
+</div>
 ---
 # 📊 Results
 
