@@ -14,7 +14,12 @@ to resolve noisy, inconsistent product naming across datasets.
 ---
 
 # ⚙️ System Architecture
-<img src="/images/pipeline.svg" width="1100">
+<div style="width: 100%; overflow-x: auto; margin: 20px 0;">
+  <img src="https://raw.githubusercontent.com/MOARMOARMAN/Product-Matching-Pipeline/refs/heads/main/images/pipeline.svg" 
+    alt="Product Matching Pipeline Diagram" 
+    style="min-width: 900px; width: 100%; display: block;">
+</div>
+
 ---
 # 📊 Results
 
