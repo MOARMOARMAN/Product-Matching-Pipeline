@@ -9,7 +9,7 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"status": "healthy", "message": "Welcome to my FastAPI app on Render! Please head to /docs or /match-csv to try out the product matching!"}
+    return {"status": "healthy", "message": "Welcome to my FastAPI app on Render! Please head to /docs to try out the product matching!"}
 
 def col_val(row, col):
     return getattr(row, col, "") 
