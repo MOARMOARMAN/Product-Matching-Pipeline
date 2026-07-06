@@ -9,7 +9,7 @@ import numpy
 
 FILE_A = "sample_data\GroceryDataset.csv"
 FILE_B = "sample_data\grocery_data_apr_2025-selected-columns.csv"
-llm_provider = ""
+llm_provider = "gemini"
 # products_a = load_costco(FILE_A)
 # products_b = load_superstore(FILE_B)
 def matching_products(products_a: list[Product], products_b: list[Product]):
