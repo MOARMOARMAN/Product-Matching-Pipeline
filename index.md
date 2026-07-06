@@ -14,31 +14,12 @@ to resolve noisy, inconsistent product naming across datasets.
 ---
 
 # ⚙️ System Architecture
-
-<div class="mermaid">
-flowchart TD
-
-A[Raw Retailer Dataset A] --> C[Product Adapter Layer]
-B[Raw Retailer Dataset B] --> C
-
-C --> D[Text Normalization Pipeline]
-D --> E[TF-IDF Vectorization]
-
-E --> F[Chunked Cosine Similarity Search]
-F --> G[Top-K Candidate Retrieval]
-
-G --> H[Hybrid Scoring Layer<br>TF-IDF + Levenshtein]
-
-H --> I{Confidence Thresholding}
-
-I -->|High Confidence| J[Confirmed Matches]
-I -->|Ambiguous| K[LLM Validation Layer]
-
-K --> L[Gemini / OpenAI Structured Output]
-L --> J
-
-J --> M[Final Matched Product Pairs]
+<div style="display:flex; justify-content:center; width:100%; overflow:hidden;">
+  <img src="https://raw.githubusercontent.com/MOARMOARMAN/Product-Matching-Pipeline/refs/heads/main/images/pipeline.svg" 
+    alt="Product Matching Pipeline Diagram" 
+    style="width: 100%; height: auto; display: block;">
 </div>
+
 ---
 # 📊 Results
 
