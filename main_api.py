@@ -1,10 +1,15 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import RedirectResponse
 import pandas as pd
 import io
 from product import Product
 from main import matching_products
 
 app = FastAPI()
+
+@app.get("/")
+def redirect_to_docs():
+    return RedirectResponse(url="/docs")
 
 def col_val(row, col):
     return getattr(row, col, "") 
