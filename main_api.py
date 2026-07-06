@@ -8,8 +8,8 @@ from main import matching_products
 app = FastAPI()
 
 @app.get("/")
-def redirect_to_docs():
-    return RedirectResponse(url="/docs")
+def read_root():
+    return {"status": "healthy", "message": "Welcome to my FastAPI app on Render! Please head to /docs or /match-csv to try out the product matching!"}
 
 def col_val(row, col):
     return getattr(row, col, "") 
