@@ -1,76 +1,76 @@
-﻿# 🛒 Cross-Retailer Product Matching Engine
+# Product Matching API
 
-A production-style **entity resolution system** that matches equivalent grocery products across heterogeneous retailer catalogs (Costco vs Superstore-style datasets).
+A REST API for large-scale product entity resolution — given two product catalogs (as CSVs with arbitrary column names), it identifies which rows across both represent the same real-world product, using a hybrid statistical scoring model with an LLM fallback for ambiguous cases. Built on top of a standalone matching pipeline that was refactored into a containerized, deployed FastAPI service.
 
-The system combines:
-- fuzzy filtering (regex)
-- NLP-based vector retrieval (TF-IDF)
-- fuzzy string matching (Levenshtein)
-- heuristic scoring
-- LLM-based validation (Gemini / OpenAI)
+**Live demo:** _[add your Render URL here]_ — visit `/docs` for an interactive interface to try it directly.
 
-to resolve noisy, inconsistent product naming across datasets.
+## The problem
 
----
+Matching product records across two catalogs is harder than it sounds: the same product can be listed under different naming conventions, with typos, extraneous marketing language ("Premium Organic Whole Milk" vs. "Whole Milk"), or unit formatting differences across sources. Naive exact-match or substring approaches fail constantly at scale — this project matched **230,000 product records against a 55,000-item catalog**, which rules out manual review as an option.
 
-# 📌 Problem Statement
+## How it works
 
-Retailer catalogs describe identical products differently:
+### Matching pipeline (`main.py`)
 
-- `"Coca Cola Zero Sugar 6 Pack 500ml"`
-- `"Coke Zero 6x500ml Bottles"`
+1. **Name normalization.** Product names are cleaned via regex: a curated "fluff word" list (marketing terms like "premium," "ultimate," unit words like "oz"/"ml"/"pack") is stripped, non-letter characters are removed, and whitespace is normalized. This produces a cleaner signal for similarity comparison without discarding the original name (kept separately for display).
 
-This project builds a system to:
-> Automatically identify equivalent products across independent grocery datasets.
+2. **Candidate retrieval via TF-IDF + cosine similarity.** All cleaned names (both catalogs combined) are vectorized with `TfidfVectorizer`. For each item in catalog B, cosine similarity against all of catalog A is computed in chunks of 500 rows at a time (to bound memory usage), and the top 3 nearest candidates are isolated per row using `numpy.argpartition` rather than a full sort — meaningfully faster at this scale since it avoids ranking the entire similarity matrix.
 
----
+3. **Hybrid scoring.** Each of the top-3 candidates is re-scored using a weighted combination: **80% TF-IDF cosine similarity + 20% normalized Levenshtein similarity**. The Levenshtein component specifically helps catch near-duplicates with minor typos or formatting differences that TF-IDF alone (which is bag-of-words, order- and spelling-insensitive) can miss.
 
-# ⚙️ System Architecture
+4. **Threshold-based routing.** Based on the final blended score:
+   - **Score > 0.8** (or either name is very short, e.g. a single word) → auto-confirmed as a match
+   - **Score > 0.7** → routed to an LLM-assisted review layer (`process_ambiguous_cases`), which batches ambiguous pairs (10 at a time) into a prompt sent to Gemini or OpenAI, asking the model to make the final call using each product's name and description
+   - **Below 0.7** → discarded as not a match
 
-```mermaid
-flowchart TD
+   This balances accuracy against cost/latency — the expensive LLM step only runs on genuinely ambiguous cases, not the full dataset.
 
-A[Raw Retailer Dataset A] --> C[Product Adapter Layer]
-B[Raw Retailer Dataset B] --> C
+### API layer (`main_api.py`)
 
-C --> D[Text Normalization Pipeline]
-D --> E[TF-IDF Vectorization]
+The matching pipeline above was originally a standalone script reading from two hardcoded CSV file paths. It's now wrapped in a FastAPI service with one core endpoint:
 
-E --> F[Chunked Cosine Similarity Search]
-F --> G[Top-K Candidate Retrieval]
-
-G --> H[Hybrid Scoring Layer<br>TF-IDF + Levenshtein]
-
-H --> I{Confidence Thresholding}
-
-I -->|High Confidence| J[Confirmed Matches]
-I -->|Ambiguous| K[LLM Validation Layer]
-
-K --> L[Gemini / OpenAI Structured Output]
-L --> J
-
-J --> M[Final Matched Product Pairs]
-
+**`POST /match-csv`** — accepts two CSV file uploads plus a column mapping for each, e.g.:
 ```
----
+file_a, file_b          — the CSV files
+a_id_col, a_name_col     — required column names for catalog A
+a_description_col, a_brand_col   — optional column names for catalog A
+b_id_col, b_name_col, b_description_col, b_brand_col  — same, for catalog B
+```
 
-# 🧠 System Overview
+**Design decision: explicit column mapping instead of auto-detection.** Real-world product CSVs don't share a standard schema — one export might call it `product_name`, another `title`, another `item_desc`. Rather than guessing at column meaning (fragile and error-prone at scale), the API requires the caller to explicitly state which column maps to which field. Missing required columns (`id`, `name`) return a clear `400` error immediately; missing optional columns (`description`, `brand`) degrade gracefully to empty strings rather than crashing, matching how the original matching logic already tolerated blank fields.
 
-This project implements a hybrid entity resolution pipeline for cross-retailer product matching.
+**`GET /`** — basic status/welcome route pointing users to `/docs`.
 
-It combines TF-IDF-based retrieval with fuzzy string matching (Levenshtein distance) to generate high-recall candidate matches across large-scale retail catalogs.
+Interactive API documentation (Swagger UI, auto-generated by FastAPI) is available at `/docs` — every field, required/optional distinction, and response shape is browsable and testable there directly, including file upload widgets.
 
-Candidate pairs are retrieved using chunked cosine similarity search to ensure scalability, then ranked using a weighted hybrid scoring function that balances semantic and lexical similarity.
+## Deployment
 
-High-confidence matches are accepted directly, while ambiguous cases are delegated to a Large Language Model (Gemini / OpenAI) for structured validation.
+The API is containerized with Docker and deployed on Render:
 
-This multi-stage design enables robust matching across noisy, heterogeneous product datasets.
+```dockerfile
+FROM python:3.14-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8000
+CMD ["uvicorn", "main_api:app", "--host", "0.0.0.0", "--port", "8000"]
+```
 
-# 📊 Results
+Dependency installation is layered separately from the application code copy, so Docker can cache the (slower) dependency-install step across rebuilds when only application code changes.
 
-On a large-scale evaluation (~285K vs ~55K product catalog comparison), the system produced:
+## Running locally
 
-- ~8,600+ high-confidence matches (from ~10K candidate alignments)
-- ~99% precision observed on manually validated samples and cross-validation using multiple LLMs (GPT, Gemini)
+```bash
+pip install -r requirements.txt
+uvicorn main_api:app --reload
+```
+Then visit `http://localhost:8000/docs` to test endpoints interactively, or build/run the container directly:
+```bash
+docker build -t product-matching-api .
+docker run -p 8000:8000 product-matching-api
+```
 
-The pipeline demonstrated strong performance in identifying equivalent products across highly noisy and heterogeneous retail datasets.
+## Stack
+
+Python · FastAPI · pandas · scikit-learn (TF-IDF, cosine similarity) · RapidFuzz (Levenshtein) · Pydantic · Docker · Render · Gemini/OpenAI (ambiguous-case resolution)
