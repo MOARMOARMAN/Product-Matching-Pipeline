@@ -71,6 +71,10 @@ docker build -t product-matching-api .
 docker run -p 8000:8000 product-matching-api
 ```
 
+## Results
+
+Running against a real 230,000-record dataset matched against a 55,000-item catalog, the pipeline produced **8,600+ validated matches** — confirmed through a combination of automated threshold-based acceptance and manual sample verification.
+
 ## Stack
 
 Python · FastAPI · pandas · scikit-learn (TF-IDF, cosine similarity) · RapidFuzz (Levenshtein) · Pydantic · Docker · Render · Gemini/OpenAI (ambiguous-case resolution)
