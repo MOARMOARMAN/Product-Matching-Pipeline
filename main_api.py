@@ -12,7 +12,7 @@ def read_root():
     return {"status": "healthy", "message": "Welcome to my FastAPI app on Render! Please head to /docs to try out the product matching!"}
 
 def col_val(row, col):
-    return getattr(row, col, "") 
+    return str(row[col]) if col and col in row else ""
 
 def csv_to_products(
     file_bytes: bytes,
