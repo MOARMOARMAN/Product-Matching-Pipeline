@@ -2,7 +2,7 @@
 
 A REST API for large-scale product entity resolution — given two product catalogs (as CSVs with arbitrary column names), it identifies which rows across both represent the same real-world product, using a hybrid statistical scoring model with an LLM fallback for ambiguous cases. Built on top of a standalone matching pipeline that was refactored into a containerized, deployed FastAPI service.
 
-**Live demo:** _[add your Render URL here]_ — visit `/docs` for an interactive interface to try it directly.
+**Live demo:** _[https://product-matching-pipeline.onrender.com/docs]_ — visit `/docs` for an interactive interface to try it directly.
 
 ## The problem
 
